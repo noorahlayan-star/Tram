@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ترام – تذكرة و ازدحام (نموذج تجريبي)</title>
+<style>
+:root{--bg:#f5f7fa;--card:#fff;--tx:#14213d;--mut:#64748b;--pr:#0b7a5b;--prt:#fff;--bd:#e2e8f0;--g:#16a34a;--y:#d97706;--r:#dc2626}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--mut:#94a3b8;--pr:#34d399;--prt:#04281e;--bd:#334155;--g:#4ade80;--y:#fbbf24;--r:#f87171}}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:inherit}
+html,body{margin:0}
+body{background:var(--bg);color:var(--tx);font-family:system-ui,"Segoe UI",Tahoma,sans-serif;max-width:480px;margin:auto;padding:12px}
+h1{font-size:1.25rem;margin:8px 0}
+.note{background:var(--card);border:1px dashed var(--y);border-radius:10px;padding:8px 10px;font-size:.8rem;color:var(--mut)}
+.tabs{display:flex;gap:6px;margin:12px 0}
+.tabs button{flex:1;padding:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;font:inherit;cursor:pointer}
+.tabs button.on{background:var(--pr);color:var(--prt);border-color:var(--pr)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:.85rem;color:var(--mut);margin:8px 0 4px}
+select,.btn{width:100%;padding:11px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit}
+.btn{background:var(--pr);color:var(--prt);border:0;font-weight:700;margin-top:12px;cursor:pointer}
+.row{display:flex;gap:6px}
+.row .btn{margin-top:8px}
+.b-g{background:var(--g)}.b-y{background:var(--y)}.b-r{background:var(--r)}
+.tk{text-align:center}
+.qr{display:grid;grid-template-columns:repeat(15,1fr);width:180px;margin:10px auto;border:6px solid #fff;background:#fff}
+.qr i{aspect-ratio:1;background:#fff}.qr i.k{background:#000}
+.code{font-family:monospace;letter-spacing:2px;font-size:1.1rem}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;color:#fff;font-size:.8rem;font-weight:700}
+.li{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)}
+.li:last-child{border:0}
+small{color:var(--mut)}
+</style>
+</head>
+<body>
+<h1>🚋 ترام – تذكرة و ازدحام</h1>
+<div class="note">نموذج تجريبي: الدفع و الرمز غير حقيقيين، و المحطات و الأسعار أمثلة. للتطبيق الرسمي تواصل مع الشركة.</div>
+
+<div class="tabs">
+  <button id="t1" class="on" onclick="tab(1)">🎫 شراء تذكرة</button>
+  <button id="t2" onclick="tab(2)">👥 الازدحام</button>
+</div>
+
+<section id="p1">
+  <div class="card">
+    <label>المحطة</label>
+    <select id="st"></select>
+    <label>نوع التذكرة</label>
+    <select id="ty">
+      <option value="40">رحلة واحدة – 40 دج (مثال)</option>
+      <option value="300">10 رحلات – 300 دج (مثال)</option>
+    </select>
+    <button class="btn" onclick="buy()">ادفع و احصل على التذكرة</button>
+  </div>
+  <div id="tickets"></div>
+</section>
+
+<section id="p2" hidden>
+  <div class="card">
+    <label>المحطة</label>
+    <select id="st2" onchange="show()"></select>
+    <p><b>الحالة الآن:</b> <span id="now"></span></p>
+    <small id="when"></small>
+    <p style="margin-bottom:0"><b>ولاش راك في الترام؟ بلّغ:</b></p>
+    <div class="row">
+      <button class="btn b-g" onclick="rep(1)">فارغ</button>
+      <button class="btn b-y" onclick="rep(2)">متوسط</button>
+      <button class="btn b-r" onclick="rep(3)">مزدحم</button>
+    </div>
+  </div>
+  <div class="card" id="all"></div>
+</section>
+
+<script>
+var STS=["الفصيلة (Les Fusillés)","خنيفسة","بيروتو","حسين داي","القبة","برج الكيفان","الدرقانة"];
+var LV={1:["فارغ","var(--g)"],2:["متوسط","var(--y)"],3:["مزدحم","var(--r)"]};
+var TTL=20*60*1000;
+var mem={tk:[],rp:{}};
+function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+mem.tk=load("tk",[]);mem.rp=load("rp",{});
+
+["st","st2"].forEach(function(id){var s=document.getElementById(id);
+ STS.forEach(function(n,i){var o=document.createElement("option");o.value=i;o.textContent=n;s.appendChild(o)})});
+
+function tab(n){
+ document.getElementById("p1").hidden=n!=1;document.getElementById("p2").hidden=n!=2;
+ document.getElementById("t1").className=n==1?"on":"";document.getElementById("t2").className=n==2?"on":"";
+ if(n==2)show();
+}
+
+function hash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function qr(code){
+ var h=hash(code),g="";
+ for(var i=0;i<225;i++){h=Math.imul(h^(h>>>13),1274126177)>>>0;
+  var r=Math.floor(i/15),c=i%15,corner=(r<4&&c<4)||(r<4&&c>10)||(r>10&&c<4);
+  g+='<i class="'+((corner?(r%3!=1||c%3!=1)&&(r+c)%2==0:h&1)?"k":"")+'"></i>'}
+ return '<div class="qr">'+g+'</div>';
+}
+function buy(){
+ var d=new Date(),code="TR-"+hash(d.getTime()+"x").toString(36).toUpperCase().slice(0,6);
+ mem.tk.unshift({code:code,st:STS[document.getElementById("st").value],
+  ty:document.getElementById("ty").selectedOptions[0].text,t:d.getTime()});
+ mem.tk=mem.tk.slice(0,5);save("tk",mem.tk);draw();
+}
+function draw(){
+ var h="";mem.tk.forEach(function(t){
+  h+='<div class="card tk"><b>'+t.ty+'</b><br><small>من '+t.st+' • '+new Date(t.t).toLocaleString("ar-DZ")+'</small>'+qr(t.code)+'<div class="code">'+t.code+'</div></div>'});
+ document.getElementById("tickets").innerHTML=h;
+}
+
+function est(){var h=new Date().getHours();return(h>=7&&h<=9)||(h>=16&&h<=18)?3:(h>=10&&h<=15)?2:1}
+function pill(l){return '<span class="pill" style="background:'+LV[l][1]+'">'+LV[l][0]+'</span>'}
+function fresh(i){var r=mem.rp[i];return r&&Date.now()-r.t<TTL?r:null}
+function show(){
+ var i=document.getElementById("st2").value,r=fresh(i);
+ document.getElementById("now").innerHTML=pill(r?r.l:est());
+ document.getElementById("when").textContent=r?"آخر بلاغ منذ "+Math.max(1,Math.round((Date.now()-r.t)/60000))+" د":"تقدير حسب الوقت (ما كاينش بلاغ حديث)";
+ var h="<b>كل المحطات</b>";
+ STS.forEach(function(n,k){var x=fresh(k);h+='<div class="li"><span>'+n+'</span>'+pill(x?x.l:est())+'</div>'});
+ document.getElementById("all").innerHTML=h;
+}
+function rep(l){mem.rp[document.getElementById("st2").value]={l:l,t:Date.now()};save("rp",mem.rp);show()}
+draw();
+</script>
+</body>
+</html>
